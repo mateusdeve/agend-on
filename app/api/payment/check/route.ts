@@ -1,31 +1,34 @@
-import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
-import mercadopago from "mercadopago"
+import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import mercadopago from "mercadopago";
 
 // Configurar o SDK do Mercado Pago com o Access Token
 mercadopago.configure({
   access_token: process.env.MERCADO_PAGO_ACCESS_TOKEN || "",
-})
+});
 
 export async function GET(request: Request) {
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = createServerSupabaseClient();
 
     // Verificar autenticação
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (!session) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     // Obter o ID do agendamento da URL
-    const url = new URL(request.url)
-    const appointmentId = url.searchParams.get("appointmentId")
+    const url = new URL(request.url);
+    const appointmentId = url.searchParams.get("appointmentId");
 
     if (!appointmentId) {
-      return NextResponse.json({ error: "ID do agendamento não fornecido" }, { status: 400 })
+      return NextResponse.json(
+        { error: "ID do agendamento não fornecido" },
+        { status: 400 }
+      );
     }
 
     // Verificar se o agendamento existe e pertence ao usuário
@@ -33,14 +36,17 @@ export async function GET(request: Request) {
       .from("appointments")
       .select("id, patient_id, status")
       .eq("id", appointmentId)
-      .single()
+      .single();
 
     if (appointmentError || !appointment) {
-      return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Agendamento não encontrado" },
+        { status: 404 }
+      );
     }
 
     if (appointment.patient_id !== session.user.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 403 })
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
     }
 
     // Se o agendamento já estiver confirmado, retornar sucesso
@@ -49,7 +55,7 @@ export async function GET(request: Request) {
         success: true,
         status: "approved",
         message: "Pagamento já confirmado",
-      })
+      });
     }
 
     // Buscar o pagamento mais recente para este agendamento
@@ -59,16 +65,21 @@ export async function GET(request: Request) {
       .eq("appointment_id", appointmentId)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single()
+      .single();
 
     if (paymentError || !payment) {
-      return NextResponse.json({ error: "Pagamento não encontrado" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Pagamento não encontrado" },
+        { status: 404 }
+      );
     }
 
     // Se o pagamento for via PIX, verificar o status no Mercado Pago
     if (payment.payment_method === "pix" && payment.external_id) {
       try {
-        const { body: paymentInfo } = await mercadopago.payment.get(payment.external_id)
+        const { body: paymentInfo } = await mercadopago.payment.get(
+          payment.external_id
+        );
 
         // Atualizar o status do pagamento no banco de dados
         await supabase
@@ -77,11 +88,14 @@ export async function GET(request: Request) {
             status: paymentInfo.status,
             payment_data: paymentInfo,
           })
-          .eq("id", payment.id)
+          .eq("id", payment.id);
 
         // Se o pagamento foi aprovado, atualizar o status do agendamento
         if (paymentInfo.status === "approved") {
-          await supabase.from("appointments").update({ status: "scheduled" }).eq("id", appointmentId)
+          await supabase
+            .from("appointments")
+            .update({ status: "scheduled" })
+            .eq("id", appointmentId);
 
           return NextResponse.json({
             success: true,
@@ -90,7 +104,7 @@ export async function GET(request: Request) {
               id: payment.id,
               status: paymentInfo.status,
             },
-          })
+          });
         }
 
         return NextResponse.json({
@@ -100,9 +114,9 @@ export async function GET(request: Request) {
             id: payment.id,
             status: paymentInfo.status,
           },
-        })
+        });
       } catch (error) {
-        console.error("Erro ao verificar pagamento no Mercado Pago:", error)
+        console.error("Erro ao verificar pagamento no Mercado Pago:", error);
         return NextResponse.json({
           success: false,
           status: payment.status,
@@ -110,7 +124,7 @@ export async function GET(request: Request) {
             id: payment.id,
             status: payment.status,
           },
-        })
+        });
       }
     }
 
@@ -122,9 +136,12 @@ export async function GET(request: Request) {
         id: payment.id,
         status: payment.status,
       },
-    })
+    });
   } catch (error: any) {
-    console.error("Erro ao verificar pagamento:", error)
-    return NextResponse.json({ error: error.message || "Erro ao verificar pagamento" }, { status: 500 })
+    console.error("Erro ao verificar pagamento:", error);
+    return NextResponse.json(
+      { error: error.message || "Erro ao verificar pagamento" },
+      { status: 500 }
+    );
   }
 }

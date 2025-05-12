@@ -17,13 +17,13 @@ export async function POST(req: Request) {
       installments,
       description,
       payer,
+      appointmentData,
+      appointmentId,
     } = bodyReq;
 
-    console.log("token ------------>", token);
     // Inicialize o client usando a chave de acesso (recomenda-se armazenar em variável de ambiente)
     const client = new MercadoPagoConfig({
-      accessToken:
-        "TEST-8172720951773154-022010-eeada3ec4e0ef4cda6d0573f7f47f219-1160073866", // ex: 'TEST-88af69cd-766b-425b-9a26-2e3aa9fad63e'
+      accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || "",
       options: {
         timeout: 5000,
         // Pode utilizar um idempotencyKey vindo do header ou definir um padrão
@@ -42,7 +42,8 @@ export async function POST(req: Request) {
       transaction_amount: Number(transaction_amount),
       installments: Number(installments),
       description, // "Descrição do produto"
-      payer, // { email, identification: { type, number } }
+      payer: payer, // { email, identification: { type, number } }0
+      metadata: { appointmentData, appointmentId },
     };
 
     const requestOptions = {
@@ -51,7 +52,6 @@ export async function POST(req: Request) {
 
     // Realiza a criação do pagamento
     const response = await paymentSdk.create({ body, requestOptions });
-    console.log("resp", response);
     return NextResponse.json({ success: true, data: response });
   } catch (error) {
     console.error("Erro na criação do pagamento: ", error);

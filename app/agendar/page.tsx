@@ -1,52 +1,58 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
-import { createClientSupabaseClient } from "@/lib/supabase/client"
-import { Calendar } from "@/components/appointment/calendar"
-import { TimeSlots } from "@/components/appointment/time-slots"
-import { DoctorCard } from "@/components/appointment/doctor-card"
-import { SpecialtySelect } from "@/components/appointment/specialty-select"
-import { PaymentForm } from "@/components/payment/payment-form"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle2 } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
-import { useRouter } from "next/navigation"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { formatCurrency } from "@/lib/utils"
-import Link from "next/link"
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { createClientSupabaseClient } from "@/lib/supabase/client";
+import { Calendar } from "@/components/appointment/calendar";
+import { TimeSlots } from "@/components/appointment/time-slots";
+import { DoctorCard } from "@/components/appointment/doctor-card";
+import { SpecialtySelect } from "@/components/appointment/specialty-select";
+import { PaymentForm } from "@/components/payment/payment-form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 
 export default function AppointmentPage() {
-  const router = useRouter()
-  const [activeTab, setActiveTab] = useState("specialty")
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
-  const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null)
-  const [selectedSpecialty, setSelectedSpecialty] = useState<{ id: string; name: string; price: number } | null>(null)
-  const [timeSlots, setTimeSlots] = useState<{ id: string; time: string; available: boolean }[]>([])
-  const [doctors, setDoctors] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState("specialty");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
+  const [selectedSpecialty, setSelectedSpecialty] = useState<{
+    id: string;
+    name: string;
+    price: number;
+  } | null>(null);
+  const [timeSlots, setTimeSlots] = useState<
+    { id: string; time: string; available: boolean }[]
+  >([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [patientInfo, setPatientInfo] = useState({
     name: "",
     email: "",
     phone: "",
     notes: "",
-  })
-  const [appointmentId, setAppointmentId] = useState<string | null>(null)
-  const [paymentComplete, setPaymentComplete] = useState(false)
+  });
+  const [appointmentId, setAppointmentId] = useState<string | null>(null);
+  const [paymentComplete, setPaymentComplete] = useState(false);
 
-  const supabase = createClientSupabaseClient()
+  const supabase = createClientSupabaseClient();
 
   // Verificar se o usuário está autenticado
   useEffect(() => {
     async function checkAuth() {
       const {
         data: { session },
-      } = await supabase.auth.getSession()
+      } = await supabase.auth.getSession();
 
       if (session) {
         // Buscar informações do paciente
@@ -54,11 +60,11 @@ export default function AppointmentPage() {
           .from("patients")
           .select("name, email, phone")
           .eq("id", session.user.id)
-          .single()
+          .single();
 
         if (error) {
-          console.error("Erro ao buscar informações do paciente:", error)
-          return
+          console.error("Erro ao buscar informações do paciente:", error);
+          return;
         }
 
         if (patient) {
@@ -67,39 +73,41 @@ export default function AppointmentPage() {
             name: patient.name,
             email: patient.email,
             phone: patient.phone || "",
-          })
+          });
         }
       }
     }
 
-    checkAuth()
-  }, [activeTab]) // Adicionar activeTab como dependência para recarregar quando a aba mudar
+    checkAuth();
+  }, [activeTab]); // Adicionar activeTab como dependência para recarregar quando a aba mudar
 
   // Buscar médicos quando a especialidade for selecionada
   useEffect(() => {
     async function fetchDoctors() {
       if (!selectedSpecialty) {
-        setDoctors([])
-        return
+        setDoctors([]);
+        return;
       }
 
-      setLoading(true)
+      setLoading(true);
 
       try {
         const { data, error } = await supabase
           .from("doctors")
-          .select(`
+          .select(
+            `
             id,
             name,
             image_url,
             available,
             specialty:specialties(name)
-          `)
+          `
+          )
           .eq("specialty_id", selectedSpecialty.id)
-          .eq("available", true)
+          .eq("available", true);
 
         if (error) {
-          throw error
+          throw error;
         }
 
         // Transformar os dados para o formato esperado pelo componente
@@ -110,30 +118,30 @@ export default function AppointmentPage() {
           image: doctor.image_url || "/placeholder.svg?height=300&width=400",
           rating: 4.5, // Valor fixo para exemplo
           available: doctor.available,
-        }))
+        }));
 
-        setDoctors(formattedDoctors)
+        setDoctors(formattedDoctors);
       } catch (error) {
-        console.error("Erro ao buscar médicos:", error)
+        console.error("Erro ao buscar médicos:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    fetchDoctors()
-  }, [selectedSpecialty, supabase])
+    fetchDoctors();
+  }, [selectedSpecialty, supabase]);
 
   // Gerar horários disponíveis quando a data for selecionada
   useEffect(() => {
     if (!selectedDate || !selectedDoctor) {
-      setTimeSlots([])
-      setSelectedSlot(null)
-      return
+      setTimeSlots([]);
+      setSelectedSlot(null);
+      return;
     }
 
     // Simulação de horários disponíveis
     // Em um cenário real, isso viria do banco de dados
-    const dayOfWeek = selectedDate.getDay()
+    const dayOfWeek = selectedDate.getDay();
     const availableSlots = [
       { id: "1", time: "08:00 - 09:00", available: true },
       { id: "2", time: "09:00 - 10:00", available: true },
@@ -143,66 +151,79 @@ export default function AppointmentPage() {
       { id: "6", time: "15:00 - 16:00", available: true },
       { id: "7", time: "16:00 - 17:00", available: false },
       { id: "8", time: "17:00 - 18:00", available: true },
-    ]
+    ];
 
-    setTimeSlots(availableSlots)
-  }, [selectedDate, selectedDoctor])
+    setTimeSlots(availableSlots);
+  }, [selectedDate, selectedDoctor]);
 
   const handleSelectDoctor = (doctorId: string) => {
-    setSelectedDoctor(doctorId === selectedDoctor ? null : doctorId)
-    setSelectedSlot(null)
-  }
+    setSelectedDoctor(doctorId === selectedDoctor ? null : doctorId);
+    setSelectedSlot(null);
+  };
 
   // In the handleSelectSpecialty function, ensure we handle missing price
-  const handleSelectSpecialty = (specialty: { id: string; name: string; price: number } | null) => {
-    setSelectedSpecialty(specialty)
-    setSelectedDoctor(null)
-    setSelectedSlot(null)
-  }
+  const handleSelectSpecialty = (
+    specialty: { id: string; name: string; price: number } | null
+  ) => {
+    setSelectedSpecialty(specialty);
+    setSelectedDoctor(null);
+    setSelectedSlot(null);
+  };
 
   const handleSelectDate = (date: Date) => {
-    setSelectedDate(date)
-    setSelectedSlot(null)
-  }
+    setSelectedDate(date);
+    setSelectedSlot(null);
+  };
 
   const handleSelectSlot = (slotId: string) => {
-    setSelectedSlot(slotId)
-  }
+    setSelectedSlot(slotId);
+  };
 
   const handlePatientInfoChange = (info: Partial<typeof patientInfo>) => {
-    setPatientInfo({ ...patientInfo, ...info })
-  }
+    setPatientInfo({ ...patientInfo, ...info });
+  };
 
   const handleCreateAppointment = async () => {
-    if (!selectedDate || !selectedSlot || !selectedDoctor || !selectedSpecialty) {
+    if (
+      !selectedDate ||
+      !selectedSlot ||
+      !selectedDoctor ||
+      !selectedSpecialty
+    ) {
       toast({
         title: "Erro ao agendar consulta",
         description: "Por favor, preencha todos os campos obrigatórios.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
     try {
       const {
         data: { session },
-      } = await supabase.auth.getSession()
+      } = await supabase.auth.getSession();
+
+      console.log("data ----------------->", session);
 
       if (!session) {
         toast({
           title: "Login necessário",
           description: "Você precisa fazer login para concluir o agendamento.",
-        })
+        });
 
-        router.push("/login?redirect=/agendar")
-        return
+        router.push("/login?redirect=/agendar");
+        return;
       }
 
       // Obter informações do slot selecionado
-      const selectedTimeSlot = timeSlots.find((slot) => slot.id === selectedSlot)
-      const [startTime, endTime] = selectedTimeSlot ? selectedTimeSlot.time.split(" - ") : ["08:00", "09:00"]
+      const selectedTimeSlot = timeSlots.find(
+        (slot) => slot.id === selectedSlot
+      );
+      const [startTime, endTime] = selectedTimeSlot
+        ? selectedTimeSlot.time.split(" - ")
+        : ["08:00", "09:00"];
 
       // Criar o agendamento com status "pending_payment"
       const { data: appointment, error } = await supabase
@@ -218,85 +239,95 @@ export default function AppointmentPage() {
           notes: patientInfo.notes || null,
         })
         .select()
-        .single()
+        .single();
 
       if (error) {
-        throw error
+        throw error;
       }
 
-      setAppointmentId(appointment.id)
-      setActiveTab("payment")
+      setAppointmentId(appointment.id);
+      console.log("appointmentId ------------------>", appointment);
+      setActiveTab("payment");
     } catch (error: any) {
       toast({
         title: "Erro ao agendar consulta",
-        description: error.message || "Ocorreu um erro ao agendar sua consulta. Tente novamente mais tarde.",
+        description:
+          error.message ||
+          "Ocorreu um erro ao agendar sua consulta. Tente novamente mais tarde.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handlePaymentComplete = async (paymentId: string) => {
-    if (!appointmentId) return
+    if (!appointmentId) return;
 
-    setLoading(true)
+    setLoading(true);
 
     try {
       // Atualizar o status do agendamento para "scheduled"
-      const { error } = await supabase.from("appointments").update({ status: "scheduled" }).eq("id", appointmentId)
+      const { error } = await supabase
+        .from("appointments")
+        .update({ status: "scheduled" })
+        .eq("id", appointmentId);
 
-      if (error) throw error
+      if (error) throw error;
 
-      setPaymentComplete(true)
+      setPaymentComplete(true);
 
       toast({
         title: "Agendamento confirmado!",
-        description: "Seu agendamento foi confirmado com sucesso após o pagamento.",
-      })
+        description:
+          "Seu agendamento foi confirmado com sucesso após o pagamento.",
+      });
 
       // Redirecionar para a página de agendamentos
       setTimeout(() => {
-        router.push("/paciente/agendamentos")
-      }, 2000)
+        router.push("/paciente/agendamentos");
+      }, 2000);
     } catch (error: any) {
       toast({
         title: "Erro ao confirmar agendamento",
-        description: error.message || "Ocorreu um erro ao confirmar seu agendamento. Entre em contato com o suporte.",
+        description:
+          error.message ||
+          "Ocorreu um erro ao confirmar seu agendamento. Entre em contato com o suporte.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleNextTab = () => {
     if (activeTab === "specialty" && selectedSpecialty) {
-      setActiveTab("doctor")
+      setActiveTab("doctor");
     } else if (activeTab === "doctor" && selectedDoctor) {
-      setActiveTab("datetime")
+      setActiveTab("datetime");
     } else if (activeTab === "datetime" && selectedDate && selectedSlot) {
-      checkAuthAndProceed()
+      checkAuthAndProceed();
     } else if (activeTab === "confirmation") {
-      handleCreateAppointment()
+      handleCreateAppointment();
     }
-  }
+  };
 
   const checkAuthAndProceed = async () => {
     // Verificar se o usuário está autenticado
     const {
       data: { session },
       error,
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (error) {
-      console.error("Erro ao obter sessão:", error)
+      console.error("Erro ao obter sessão:", error);
       toast({
         title: "Erro de autenticação",
-        description: "Ocorreu um erro ao verificar sua sessão. Tente novamente.",
+        description:
+          "Ocorreu um erro ao verificar sua sessão. Tente novamente.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     if (!session) {
@@ -312,45 +343,47 @@ export default function AppointmentPage() {
           date: selectedDate?.toISOString(),
           slotId: selectedSlot,
           slotTime: selectedSlotTime,
-        }),
-      )
+        })
+      );
 
       // Redirecionar para a página de login
       toast({
         title: "Login necessário",
         description: "Você precisa fazer login para continuar o agendamento.",
-      })
+      });
 
-      router.push(`/login?redirect=${encodeURIComponent("/agendar")}`)
-      return
+      router.push(`/login?redirect=${encodeURIComponent("/agendar")}`);
+      return;
     }
 
     // Se estiver autenticado, prosseguir para a etapa de confirmação
-    setActiveTab("confirmation")
-  }
+    setActiveTab("confirmation");
+  };
 
   const handlePrevTab = () => {
     if (activeTab === "payment") {
-      setActiveTab("confirmation")
+      setActiveTab("confirmation");
     } else if (activeTab === "confirmation") {
-      setActiveTab("datetime")
+      setActiveTab("datetime");
     } else if (activeTab === "datetime") {
-      setActiveTab("doctor")
+      setActiveTab("doctor");
     } else if (activeTab === "doctor") {
-      setActiveTab("specialty")
+      setActiveTab("specialty");
     }
-  }
+  };
 
-  const selectedSlotTime = selectedSlot ? timeSlots.find((slot) => slot.id === selectedSlot)?.time : undefined
+  const selectedSlotTime = selectedSlot
+    ? timeSlots.find((slot) => slot.id === selectedSlot)?.time
+    : undefined;
 
   // Adicione este useEffect após os outros useEffects
   useEffect(() => {
     // Verificar se há um agendamento pendente no localStorage
-    const pendingAppointment = localStorage.getItem("pendingAppointment")
+    const pendingAppointment = localStorage.getItem("pendingAppointment");
 
     if (pendingAppointment) {
       try {
-        const appointmentData = JSON.parse(pendingAppointment)
+        const appointmentData = JSON.parse(pendingAppointment);
 
         // Restaurar os dados do agendamento
         if (appointmentData.specialtyId && appointmentData.specialtyName) {
@@ -358,55 +391,60 @@ export default function AppointmentPage() {
             id: appointmentData.specialtyId,
             name: appointmentData.specialtyName,
             price: appointmentData.specialtyPrice || 100.0,
-          })
+          });
 
           // Buscar médicos para esta especialidade acontecerá automaticamente pelo useEffect
         }
 
         if (appointmentData.doctorId) {
-          setSelectedDoctor(appointmentData.doctorId)
+          setSelectedDoctor(appointmentData.doctorId);
         }
 
         if (appointmentData.date) {
-          setSelectedDate(new Date(appointmentData.date))
+          setSelectedDate(new Date(appointmentData.date));
         }
 
         if (appointmentData.slotId) {
-          setSelectedSlot(appointmentData.slotId)
+          setSelectedSlot(appointmentData.slotId);
         }
 
         // Definir a etapa ativa com base nos dados restaurados
-        if (appointmentData.specialtyId && appointmentData.doctorId && appointmentData.date && appointmentData.slotId) {
+        if (
+          appointmentData.specialtyId &&
+          appointmentData.doctorId &&
+          appointmentData.date &&
+          appointmentData.slotId
+        ) {
           // Verificar se o usuário está autenticado
           const checkSession = async () => {
             const {
               data: { session },
-            } = await supabase.auth.getSession()
+            } = await supabase.auth.getSession();
 
             if (session) {
               // Se estiver autenticado, ir para a etapa de confirmação
-              setActiveTab("confirmation")
+              setActiveTab("confirmation");
             } else {
               // Se não estiver autenticado, ir para a etapa de data/hora
-              setActiveTab("datetime")
+              setActiveTab("datetime");
             }
-          }
+          };
 
-          checkSession()
+          checkSession();
         } else if (appointmentData.specialtyId && appointmentData.doctorId) {
-          setActiveTab("datetime")
+          setActiveTab("datetime");
         } else if (appointmentData.specialtyId) {
-          setActiveTab("doctor")
+          setActiveTab("doctor");
         }
 
         // Limpar os dados pendentes
-        localStorage.removeItem("pendingAppointment")
+        localStorage.removeItem("pendingAppointment");
       } catch (error) {
-        console.error("Erro ao restaurar agendamento pendente:", error)
-        localStorage.removeItem("pendingAppointment")
+        console.error("Erro ao restaurar agendamento pendente:", error);
+        localStorage.removeItem("pendingAppointment");
       }
     }
-  }, [])
+  }, []);
 
   return (
     <div className="container py-12">
@@ -422,7 +460,11 @@ export default function AppointmentPage() {
               Especialidade
             </span>
           </TabsTrigger>
-          <TabsTrigger value="doctor" disabled={!selectedSpecialty} className="justify-start">
+          <TabsTrigger
+            value="doctor"
+            disabled={!selectedSpecialty}
+            className="justify-start"
+          >
             <span className="flex items-center">
               <span className="bg-primary/10 text-primary w-6 h-6 rounded-full flex items-center justify-center mr-2 text-xs">
                 2
@@ -430,7 +472,11 @@ export default function AppointmentPage() {
               Médico
             </span>
           </TabsTrigger>
-          <TabsTrigger value="datetime" disabled={!selectedDoctor} className="justify-start">
+          <TabsTrigger
+            value="datetime"
+            disabled={!selectedDoctor}
+            className="justify-start"
+          >
             <span className="flex items-center">
               <span className="bg-primary/10 text-primary w-6 h-6 rounded-full flex items-center justify-center mr-2 text-xs">
                 3
@@ -438,7 +484,11 @@ export default function AppointmentPage() {
               Data e Hora
             </span>
           </TabsTrigger>
-          <TabsTrigger value="confirmation" disabled={!selectedSlot} className="justify-start">
+          <TabsTrigger
+            value="confirmation"
+            disabled={!selectedSlot}
+            className="justify-start"
+          >
             <span className="flex items-center">
               <span className="bg-primary/10 text-primary w-6 h-6 rounded-full flex items-center justify-center mr-2 text-xs">
                 4
@@ -446,7 +496,11 @@ export default function AppointmentPage() {
               Confirmação
             </span>
           </TabsTrigger>
-          <TabsTrigger value="payment" disabled={!appointmentId} className="justify-start">
+          <TabsTrigger
+            value="payment"
+            disabled={!appointmentId}
+            className="justify-start"
+          >
             <span className="flex items-center">
               <span className="bg-primary/10 text-primary w-6 h-6 rounded-full flex items-center justify-center mr-2 text-xs">
                 5
@@ -459,7 +513,10 @@ export default function AppointmentPage() {
         <div className="mt-8">
           <TabsContent value="specialty" className="space-y-8">
             <div className="max-w-md mx-auto">
-              <SpecialtySelect onSelectSpecialty={handleSelectSpecialty} selectedSpecialty={selectedSpecialty} />
+              <SpecialtySelect
+                onSelectSpecialty={handleSelectSpecialty}
+                selectedSpecialty={selectedSpecialty}
+              />
             </div>
 
             <div className="flex justify-end">
@@ -473,7 +530,9 @@ export default function AppointmentPage() {
           <TabsContent value="doctor">
             <div className="space-y-8">
               <div>
-                <h2 className="text-xl font-semibold mb-4">Selecione um médico</h2>
+                <h2 className="text-xl font-semibold mb-4">
+                  Selecione um médico
+                </h2>
 
                 {loading ? (
                   <div className="flex justify-center py-12">
@@ -492,7 +551,9 @@ export default function AppointmentPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <p className="text-muted-foreground">Nenhum médico disponível para esta especialidade.</p>
+                    <p className="text-muted-foreground">
+                      Nenhum médico disponível para esta especialidade.
+                    </p>
                   </div>
                 )}
               </div>
@@ -514,10 +575,17 @@ export default function AppointmentPage() {
             <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <Calendar onSelectDate={handleSelectDate} selectedDate={selectedDate} />
+                  <Calendar
+                    onSelectDate={handleSelectDate}
+                    selectedDate={selectedDate}
+                  />
                 </div>
                 <div>
-                  <TimeSlots slots={timeSlots} selectedSlot={selectedSlot} onSelectSlot={handleSelectSlot} />
+                  <TimeSlots
+                    slots={timeSlots}
+                    selectedSlot={selectedSlot}
+                    onSelectSlot={handleSelectSlot}
+                  />
                 </div>
               </div>
 
@@ -526,7 +594,10 @@ export default function AppointmentPage() {
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Voltar
                 </Button>
-                <Button onClick={handleNextTab} disabled={!selectedDate || !selectedSlot}>
+                <Button
+                  onClick={handleNextTab}
+                  disabled={!selectedDate || !selectedSlot}
+                >
                   Próximo
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -537,33 +608,53 @@ export default function AppointmentPage() {
           <TabsContent value="confirmation">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h2 className="text-xl font-semibold mb-4">Resumo do agendamento</h2>
+                <h2 className="text-xl font-semibold mb-4">
+                  Resumo do agendamento
+                </h2>
 
                 <div className="bg-muted/50 p-6 rounded-lg space-y-4">
                   <div>
-                    <h3 className="font-medium text-sm text-muted-foreground">Especialidade</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground">
+                      Especialidade
+                    </h3>
                     <p>{selectedSpecialty?.name}</p>
                   </div>
 
                   <div>
-                    <h3 className="font-medium text-sm text-muted-foreground">Médico</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground">
+                      Médico
+                    </h3>
                     <p>{doctors.find((d) => d.id === selectedDoctor)?.name}</p>
                   </div>
 
                   <div>
-                    <h3 className="font-medium text-sm text-muted-foreground">Data</h3>
-                    <p>{selectedDate ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : ""}</p>
+                    <h3 className="font-medium text-sm text-muted-foreground">
+                      Data
+                    </h3>
+                    <p>
+                      {selectedDate
+                        ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", {
+                            locale: ptBR,
+                          })
+                        : ""}
+                    </p>
                   </div>
 
                   <div>
-                    <h3 className="font-medium text-sm text-muted-foreground">Horário</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground">
+                      Horário
+                    </h3>
                     <p>{selectedSlotTime}</p>
                   </div>
 
                   <div>
-                    <h3 className="font-medium text-sm text-muted-foreground">Valor da consulta</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground">
+                      Valor da consulta
+                    </h3>
                     <p className="font-bold text-primary">
-                      {selectedSpecialty?.price ? formatCurrency(selectedSpecialty.price) : "Preço não definido"}
+                      {selectedSpecialty?.price
+                        ? formatCurrency(selectedSpecialty.price)
+                        : "Preço não definido"}
                     </p>
                   </div>
                 </div>
@@ -578,7 +669,9 @@ export default function AppointmentPage() {
                     <Input
                       id="name"
                       value={patientInfo.name}
-                      onChange={(e) => handlePatientInfoChange({ name: e.target.value })}
+                      onChange={(e) =>
+                        handlePatientInfoChange({ name: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -589,7 +682,9 @@ export default function AppointmentPage() {
                       id="email"
                       type="email"
                       value={patientInfo.email}
-                      onChange={(e) => handlePatientInfoChange({ email: e.target.value })}
+                      onChange={(e) =>
+                        handlePatientInfoChange({ email: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -599,7 +694,9 @@ export default function AppointmentPage() {
                     <Input
                       id="phone"
                       value={patientInfo.phone}
-                      onChange={(e) => handlePatientInfoChange({ phone: e.target.value })}
+                      onChange={(e) =>
+                        handlePatientInfoChange({ phone: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -609,7 +706,9 @@ export default function AppointmentPage() {
                     <Textarea
                       id="notes"
                       value={patientInfo.notes}
-                      onChange={(e) => handlePatientInfoChange({ notes: e.target.value })}
+                      onChange={(e) =>
+                        handlePatientInfoChange({ notes: e.target.value })
+                      }
                       placeholder="Descreva brevemente o motivo da sua consulta"
                     />
                   </div>
@@ -623,7 +722,12 @@ export default function AppointmentPage() {
                 </Button>
                 <Button
                   onClick={handleNextTab}
-                  disabled={!patientInfo.name || !patientInfo.email || !patientInfo.phone || loading}
+                  disabled={
+                    !patientInfo.name ||
+                    !patientInfo.email ||
+                    !patientInfo.phone ||
+                    loading
+                  }
                 >
                   {loading ? (
                     <>
@@ -650,11 +754,14 @@ export default function AppointmentPage() {
                   </div>
                   <h2 className="text-2xl font-bold">Pagamento confirmado!</h2>
                   <p className="text-muted-foreground">
-                    Seu agendamento foi confirmado com sucesso. Você será redirecionado para a página de agendamentos.
+                    Seu agendamento foi confirmado com sucesso. Você será
+                    redirecionado para a página de agendamentos.
                   </p>
                   <div className="pt-4">
                     <Button asChild>
-                      <Link href="/paciente/agendamentos">Ver meus agendamentos</Link>
+                      <Link href="/paciente/agendamentos">
+                        Ver meus agendamentos
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -680,5 +787,5 @@ export default function AppointmentPage() {
         </div>
       </Tabs>
     </div>
-  )
+  );
 }

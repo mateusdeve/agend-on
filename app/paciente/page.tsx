@@ -1,45 +1,58 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { AppointmentCard } from "@/components/patient/appointment-card"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { AppointmentCard } from "@/components/patient/appointment-card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default async function PatientDashboard() {
-  const supabase = createServerSupabaseClient()
+  const supabase = createServerSupabaseClient();
 
   // Buscar informações do usuário
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   // Buscar informações do paciente
-  const { data: patient } = await supabase.from("patients").select("*").eq("id", user?.id).single()
+  const { data: patient } = await supabase
+    .from("patients")
+    .select("*")
+    .eq("id", user?.id)
+    .single();
 
   // Buscar próximos agendamentos
   const { data: upcomingAppointments } = await supabase
     .from("appointments")
-    .select(`
-      id,
-      appointment_date,
-      start_time,
-      end_time,
-      status,
-      notes,
-      doctor:doctors(name, image_url),
-      specialty:specialties(name)
-    `)
+    .select(
+      `
+    id,
+    appointment_date,
+    start_time,
+    end_time,
+    status,
+    notes,
+    doctor:doctors(name, image_url),
+    specialty:specialties(name)
+  `
+    )
     .eq("patient_id", user?.id)
-    .eq("status", "scheduled")
-    .gte("appointment_date", new Date().toISOString().split("T")[0])
-    .order("appointment_date", { ascending: true })
-    .order("start_time", { ascending: true })
-    .limit(3)
+    .in("status", ["scheduled", "pending_payment"]) // Filtra por status "scheduled" ou "pending_payment"
+    // .gte("appointment_date", new Date().toISOString().split("T")[0])
+    .order("created_at", { ascending: false }) // Ordena pela data de criação (ascending: true para mais antigos primeiro)
+    // Ordena pela data de agendamento (se necessário)
+    .order("start_time", { ascending: false }) // Ordena pelo horário de início (mais recentes primeiro)
+    .limit(3);
+
+  console.log("upcomingAppointments ---------------->", upcomingAppointments);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Olá, {patient?.name?.split(" ")[0] || "Paciente"}</h1>
-          <p className="text-muted-foreground">Bem-vindo à sua área do paciente</p>
+          <h1 className="text-2xl font-bold">
+            Olá, {patient?.name?.split(" ")[0] || "Paciente"}
+          </h1>
+          <p className="text-muted-foreground">
+            Bem-vindo à sua área do paciente
+          </p>
         </div>
         <Button asChild>
           <Link href="/agendar">Agendar nova consulta</Link>
@@ -62,8 +75,12 @@ export default async function PatientDashboard() {
           </div>
         ) : (
           <div className="text-center py-12 border rounded-lg bg-muted/20">
-            <h3 className="text-lg font-medium mb-2">Nenhuma consulta agendada</h3>
-            <p className="text-muted-foreground mb-6">Você não possui consultas agendadas no momento.</p>
+            <h3 className="text-lg font-medium mb-2">
+              Nenhuma consulta agendada
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              Você não possui consultas agendadas no momento.
+            </p>
             <Button asChild>
               <Link href="/agendar">Agendar consulta</Link>
             </Button>
@@ -71,5 +88,5 @@ export default async function PatientDashboard() {
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -52,6 +52,9 @@ export async function POST(req: Request) {
 
     // Realiza a criação do pagamento
     const response = await paymentSdk.create({ body, requestOptions });
+
+    console.log("response", response);
+
     return NextResponse.json({ success: true, data: response });
   } catch (error) {
     console.error("Erro na criação do pagamento: ", error);

@@ -9,13 +9,42 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "@/components/ui/use-toast";
+// Interfaces para tipar os dados
+interface Doctor {
+  id: string;
+  name: string;
+}
 
+interface Specialty {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface Patient {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface Appointment {
+  id: string;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  notes: string | undefined;
+  doctor: Doctor;
+  specialty: Specialty;
+  patient: Patient;
+}
 export default function PaymentPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
-  const [appointment, setAppointment] = useState<any>(null);
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [paymentComplete, setPaymentComplete] = useState(false);
   const router = useRouter();
   const supabase = createClientSupabaseClient();
+
   const { id } = params;
   useEffect(() => {
     async function fetchAppointment() {
@@ -29,23 +58,23 @@ export default function PaymentPage({ params }: { params: { id: string } }) {
           return;
         }
 
-        const { data, error } = await supabase
+        const { data, error } = (await supabase
           .from("appointments")
           .select(
             `
-            id,
-            appointment_date,
-            start_time,
-            end_time,
-            status,
-            notes,
-            doctor:doctors(id, name),
-            specialty:specialties(id, name, price),
-            patient:patients(id, name, email)
-          `
+              id,
+              appointment_date,
+              start_time,
+              end_time,
+              status,
+              notes,
+              doctor:doctors(id, name),
+              specialty:specialties(id, name, price),
+              patient:patients(id, name, email)
+            `
           )
           .eq("id", params.id)
-          .single();
+          .single()) as { data: Appointment | null; error: any };
 
         if (error) throw error;
 

@@ -132,6 +132,52 @@ export default function AppointmentPage() {
   }, [selectedSpecialty, supabase]);
 
   // Gerar horários disponíveis quando a data for selecionada
+  // useEffect(() => {
+  //   if (!selectedDate || !selectedDoctor) {
+  //     setTimeSlots([]);
+  //     setSelectedSlot(null);
+  //     return;
+  //   }
+
+  //   const dayOfWeek = selectedDate.getDay();
+  //   const availableSlots = [
+  //     { id: "1", time: "08:00 - 09:00", available: true },
+  //     { id: "2", time: "09:00 - 10:00", available: true },
+  //     { id: "3", time: "10:00 - 11:00", available: false },
+  //     { id: "4", time: "11:00 - 12:00", available: false },
+  //     { id: "5", time: "14:00 - 15:00", available: true },
+  //     { id: "6", time: "15:00 - 16:00", available: true },
+  //     { id: "7", time: "16:00 - 17:00", available: false },
+  //     { id: "8", time: "17:00 - 18:00", available: true },
+  //   ];
+
+  //   async function filterAvailableSlots() {
+  //     try {
+  //       const { data, error } = await supabase
+  //         .from("doctor_availability")
+  //         .select(
+  //           `
+  //           id,
+  //           doctor_id,
+  //           day_of_week,
+  //           start_time,
+  //           end_time
+  //         `
+  //         )
+  //         .eq("doctor_id", selectedDoctor)
+  //         .eq("day_of_week", dayOfWeek);
+
+  //       console.log("data --------------->", data);
+  //     } catch (e) {
+  //       console.log("ERROR", e);
+  //     }
+  //   }
+
+  //   filterAvailableSlots();
+
+  //   setTimeSlots(availableSlots);
+  // }, [selectedDate, selectedDoctor]);
+
   useEffect(() => {
     if (!selectedDate || !selectedDoctor) {
       setTimeSlots([]);
@@ -139,22 +185,99 @@ export default function AppointmentPage() {
       return;
     }
 
-    // Simulação de horários disponíveis
-    // Em um cenário real, isso viria do banco de dados
-    const dayOfWeek = selectedDate.getDay();
-    const availableSlots = [
-      { id: "1", time: "08:00 - 09:00", available: true },
-      { id: "2", time: "09:00 - 10:00", available: true },
-      { id: "3", time: "10:00 - 11:00", available: false },
-      { id: "4", time: "11:00 - 12:00", available: true },
-      { id: "5", time: "14:00 - 15:00", available: true },
-      { id: "6", time: "15:00 - 16:00", available: true },
-      { id: "7", time: "16:00 - 17:00", available: false },
-      { id: "8", time: "17:00 - 18:00", available: true },
-    ];
+    const dayOfWeek = selectedDate.getDay(); // 0 = domingo, 1 = segunda...
 
-    setTimeSlots(availableSlots);
+    async function loadAvailableSlots() {
+      try {
+        // 1️⃣ Buscar a disponibilidade do médico
+        const { data: availability, error: availabilityError } = await supabase
+          .from("doctor_availability")
+          .select(
+            `
+          start_time, end_time
+        `
+          )
+          .eq("doctor_id", selectedDoctor)
+          .eq("day_of_week", dayOfWeek);
+
+        if (availabilityError || !availability.length) {
+          console.error(
+            "Erro ou disponibilidade não encontrada",
+            availabilityError
+          );
+          setTimeSlots([]); // médico não atende nesse dia
+          return;
+        }
+
+        const { start_time, end_time } = availability[0];
+
+        // 2️⃣ Buscar agendamentos já feitos para esse dia
+        const formattedDate =
+          selectedDate && selectedDate.toISOString().split("T")[0]; // YYYY-MM-DD
+
+        const { data: appointments, error: appointmentsError } = await supabase
+          .from("appointments")
+          .select(`start_time, end_time`)
+          .eq("doctor_id", selectedDoctor)
+          .eq("appointment_date", formattedDate);
+
+        if (appointmentsError) {
+          console.error("Erro ao buscar agendamentos", appointmentsError);
+          setTimeSlots([]);
+          return;
+        }
+
+        // 3️⃣ Slots fixos da interface
+        const slots = [
+          { id: "1", time: "08:00 - 09:00" },
+          { id: "2", time: "09:00 - 10:00" },
+          { id: "3", time: "10:00 - 11:00" },
+          { id: "4", time: "11:00 - 12:00" },
+          { id: "5", time: "14:00 - 15:00" },
+          { id: "6", time: "15:00 - 16:00" },
+          { id: "7", time: "16:00 - 17:00" },
+          { id: "8", time: "17:00 - 18:00" },
+        ];
+
+        const startMinutes = toMinutes(start_time);
+        const endMinutes = toMinutes(end_time);
+
+        // 4️⃣ Montar os slots com "available"
+        const availableSlots = slots.map((slot) => {
+          const [slotStartStr, slotEndStr] = slot.time.split(" - ");
+          const slotStart = toMinutes(slotStartStr);
+          const slotEnd = toMinutes(slotEndStr);
+
+          const isWithinAvailability =
+            slotStart >= startMinutes && slotEnd <= endMinutes;
+
+          const isBooked = appointments.some((appt) => {
+            const apptStart = toMinutes(appt.start_time);
+            const apptEnd = toMinutes(appt.end_time);
+
+            return slotStart === apptStart && slotEnd === apptEnd;
+          });
+
+          return {
+            ...slot,
+            available: isWithinAvailability && !isBooked,
+          };
+        });
+
+        setTimeSlots(availableSlots);
+      } catch (e) {
+        console.log("ERROR", e);
+        setTimeSlots([]);
+      }
+    }
+
+    loadAvailableSlots();
   }, [selectedDate, selectedDoctor]);
+
+  function toMinutes(timeStr: any) {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    return hours * 60 + minutes;
+  }
 
   const handleSelectDoctor = (doctorId: string) => {
     setSelectedDoctor(doctorId === selectedDoctor ? null : doctorId);

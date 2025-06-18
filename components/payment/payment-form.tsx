@@ -259,12 +259,13 @@ export function PaymentForm({
               PIX
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="credit_card" className="mt-4">
-            {/* <CreditCardForm
-              onSubmit={handlePayWithCreditCard}
-              isLoading={isLoading}
-              amount={appointmentData.specialtyPrice}
-            /> */}
+
+          <div
+            style={{
+              display: paymentMethod === "credit_card" ? "block" : "none",
+            }}
+            className="mt-4"
+          >
             <Payments
               email={appointmentData.patientEmail}
               nameProduct={appointmentData.specialtyName}
@@ -272,15 +273,19 @@ export function PaymentForm({
               appointmentData={appointmentData}
               appointmentId={appointmentId}
             />
-          </TabsContent>
-          <TabsContent value="pix" className="mt-4">
+          </div>
+
+          <div
+            style={{ display: paymentMethod === "pix" ? "block" : "none" }}
+            className="mt-4"
+          >
             <PixPaymentForm
               amount={appointmentData.specialtyPrice}
               onPaymentComplete={handlePixPaymentComplete}
               isLoading={isLoading}
               pixData={pixData}
             />
-          </TabsContent>
+          </div>
         </Tabs>
       </CardContent>
       <CardFooter className="flex justify-between">
